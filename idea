@@ -1,0 +1,102 @@
+# PRD: User-Governed Social Media Content Moderation and Appeals System
+
+## Overview
+This system enables decentralized governance for content moderation on a blockchain-powered social media platform.  
+- Users can post content.  
+- Content may be flagged for review.  
+- Moderation decisions are made by a governance DAO.  
+- Users can appeal decisions, and appeals are handled transparently.  
+
+The system is modular, with each contract handling a specific responsibility.
+
+---
+
+## Core Smart Contracts
+
+### 1. **ContentRegistry Contract**
+**Purpose:**  
+Register and store references to user-generated content.  
+
+**Data Structures:**  
+- `map contents {id: uint} {author: principal, cid: (string-ascii 100), createdAt: uint, status: (string-ascii 20)}`  
+  - `cid` = off-chain content identifier (e.g., IPFS/Arweave hash).  
+  - `status` = `"active"`, `"flagged"`, `"removed"`.  
+- `data-var content-counter uint`  
+
+**Justification:**  
+Provides immutable record of posted content, prevents silent deletion, and allows audit trails.
+
+---
+
+### 2. **FlaggingSystem Contract**
+**Purpose:**  
+Allow users to flag inappropriate or rule-breaking content for review.  
+
+**Data Structures:**  
+- `map flags {flagId: uint} {contentId: uint, reporter: principal, reason: (string-ascii 100), timestamp: uint, resolved: bool}`  
+- `data-var flag-counter uint`  
+
+**Justification:**  
+Crowdsources moderation by letting the community report content instead of relying on a central authority.
+
+---
+
+### 3. **ModerationDAO Contract**
+**Purpose:**  
+Governance layer where token holders vote on flagged content decisions (keep/remove).  
+
+**Data Structures:**  
+- `map proposals {proposalId: uint} {contentId: uint, flagId: uint, votesFor: uint, votesAgainst: uint, deadline: uint, executed: bool}`  
+- `map votes {proposalId: uint, voter: principal} {choice: bool}`  
+- `data-var proposal-counter uint`  
+
+**Justification:**  
+Provides decentralized governance for moderation outcomes, ensuring transparency and accountability.
+
+---
+
+### 4. **AppealsContract**
+**Purpose:**  
+Give content authors a right to appeal moderation decisions, reviewed by the DAO.  
+
+**Data Structures:**  
+- `map appeals {appealId: uint} {contentId: uint, appellant: principal, reason: (string-ascii 200), votesFor: uint, votesAgainst: uint, resolved: bool}`  
+- `data-var appeal-counter uint`  
+
+**Justification:**  
+Protects users from unfair censorship by enabling a fair appeal mechanism.
+
+---
+
+### 5. **GovernanceToken Contract**
+**Purpose:**  
+Provide voting power to participants in the ModerationDAO and Appeals process.  
+
+**Data Structures:**  
+- `map balances {owner: principal} {amount: uint}`  
+- `data-var total-supply uint`  
+
+**Justification:**  
+Token-based voting ensures that governance is community-driven, resistant to spam, and proportional to stake.
+
+---
+
+## System Workflow
+1. **Post Content** → Added to `ContentRegistry`.  
+2. **Flagging** → Users flag suspicious content via `FlaggingSystem`.  
+3. **DAO Review** → `ModerationDAO` creates a proposal linked to the flagged content.  
+4. **Decision** → Votes determine whether content stays or is removed in `ContentRegistry`.  
+5. **Appeals** → Author can challenge the decision in `AppealsContract`.  
+6. **Final DAO Vote** → DAO votes again on the appeal, outcome is binding.  
+
+---
+
+## Suggested File Setup
+Inside `contracts/` folder:  
+- `content-registry.clar`  
+- `flagging-system.clar`  
+- `moderation-dao.clar`  
+- `appeals.clar`  
+- `governance-token.clar`  
+
+---
