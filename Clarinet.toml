@@ -5,9 +5,25 @@ authors = []
 telemetry = false
 cache_dir = "./.cache"
 
-# [contracts.counter]
-# path = "contracts/counter.clar"
-# epoch = "latest"
+[contracts.governance-token]
+path = "contracts/governance-token.clar"
+epoch = "latest"
+
+[contracts.content-registry]
+path = "contracts/content-registry.clar"
+epoch = "latest"
+
+[contracts.flagging-system]
+path = "contracts/flagging-system.clar"
+epoch = "latest"
+
+[contracts.moderation-dao]
+path = "contracts/moderation-dao.clar"
+epoch = "latest"
+
+[contracts.appeals]
+path = "contracts/appeals.clar"
+epoch = "latest"
 
 [repl.analysis]
 passes = ["check_checker"]
