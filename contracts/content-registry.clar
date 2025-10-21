@@ -17,6 +17,10 @@
 (define-constant STATUS_FLAGGED "flagged")
 (define-constant STATUS_REMOVED "removed")
 (define-constant STATUS_APPEALING "appealing")
+(define-constant STATUS_ARCHIVED "archived")
+
+;; Archive constants (Phase 3)
+(define-constant ARCHIVE_AFTER_BLOCKS u525600) ;; ~1 year in blocks (assuming 10 min blocks)
 
 ;; Data variables
 (define-data-var content-counter uint u0)
@@ -217,6 +221,56 @@
 (define-read-only (is-content-appealing (content-id uint))
   (match (get-content-status content-id)
     status (is-eq status STATUS_APPEALING)
+    false
+  )
+)
+
+;; Archive data map (Phase 3)
+(define-map archived-content
+  {content-id: uint}
+  {
+    archived-at: uint,
+    reason: (string-ascii 100)
+  }
+)
+
+;; Archive content (Phase 3)
+(define-public (archive-content (content-id uint) (reason (string-ascii 100)))
+  (let ((content-data (unwrap! (map-get? contents {id: content-id}) ERR_CONTENT_NOT_FOUND)))
+    (begin
+      (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+      (asserts! (> (len reason) u0) ERR_INVALID_STATUS)
+
+      ;; Archive the content
+      (map-set archived-content
+        {content-id: content-id}
+        {
+          archived-at: stacks-block-height,
+          reason: reason
+        }
+      )
+
+      ;; Update content status to archived
+      (map-set contents
+        {id: content-id}
+        (merge content-data {status: STATUS_ARCHIVED})
+      )
+
+      (print {action: "archive-content", content-id: content-id, reason: reason, archived-at: stacks-block-height})
+      (ok true)
+    )
+  )
+)
+
+;; Get archived content info (Phase 3)
+(define-read-only (get-archived-content (content-id uint))
+  (map-get? archived-content {content-id: content-id})
+)
+
+;; Check if content is archived (Phase 3)
+(define-read-only (is-content-archived (content-id uint))
+  (match (get-content-status content-id)
+    status (is-eq status STATUS_ARCHIVED)
     false
   )
 )
