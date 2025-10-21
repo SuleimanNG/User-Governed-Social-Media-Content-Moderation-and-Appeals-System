@@ -1,5 +1,6 @@
 ;; Governance Token Contract
 ;; SIP-010 compliant fungible token for voting power in the content moderation system
+;; Implements proper error handling and delegated transfer support
 
 ;; Constants
 (define-constant CONTRACT_OWNER tx-sender)
@@ -15,6 +16,7 @@
 (define-constant ERR_TRANSFER_FAILED (err u103))
 (define-constant ERR_ALREADY_INITIALIZED (err u104))
 (define-constant ERR_NOT_INITIALIZED (err u105))
+(define-constant ERR_INSUFFICIENT_ALLOWANCE (err u106))
 
 ;; Data variables
 (define-data-var token-initialized bool false)
@@ -138,6 +140,36 @@
   )
 )
 
+;; Approve tokens for delegated transfer (SIP-010 compliance)
+(define-public (approve (spender principal) (amount uint))
+  (begin
+    (asserts! (var-get token-initialized) ERR_NOT_INITIALIZED)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (asserts! (not (is-eq spender tx-sender)) ERR_UNAUTHORIZED)
+    (map-set allowances {owner: tx-sender, spender: spender} amount)
+    (print {action: "approve", owner: tx-sender, spender: spender, amount: amount})
+    (ok true)
+  )
+)
+
+;; Transfer tokens on behalf of owner (SIP-010 compliance)
+(define-public (transfer-from (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
+  (begin
+    (asserts! (var-get token-initialized) ERR_NOT_INITIALIZED)
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    (let ((allowance (default-to u0 (map-get? allowances {owner: sender, spender: tx-sender}))))
+      (asserts! (>= allowance amount) ERR_INSUFFICIENT_ALLOWANCE)
+      (let ((sender-balance (get-balance-of sender)))
+        (asserts! (>= sender-balance amount) ERR_INSUFFICIENT_BALANCE)
+        (try! (ft-transfer? governance-token amount sender recipient))
+        (map-set allowances {owner: sender, spender: tx-sender} (- allowance amount))
+        (print {action: "transfer-from", sender: sender, recipient: recipient, amount: amount, spender: tx-sender, memo: memo})
+        (ok true)
+      )
+    )
+  )
+)
+
 ;; Check if token is initialized
 (define-read-only (is-initialized)
   (var-get token-initialized)
@@ -146,4 +178,9 @@
 ;; Get contract owner
 (define-read-only (get-contract-owner)
   CONTRACT_OWNER
+)
+
+;; Get allowance for spender
+(define-read-only (get-allowance (owner principal) (spender principal))
+  (default-to u0 (map-get? allowances {owner: owner, spender: spender}))
 )
